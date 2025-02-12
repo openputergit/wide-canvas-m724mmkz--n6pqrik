@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Focus Quest - ADHD-Friendly Task Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: #fafcff;
+        }
+        .neuborder {
+            border: 3px solid black;
+            box-shadow: 4px 4px 0 black;
+        }
+        .task-complete {
+            animation: celebrate 0.5s ease-in-out;
+        }
+        @keyframes celebrate {
+            0% { transform: scale(1) rotate(0deg); }
+            50% { transform: scale(1.1) rotate(5deg); }
+            100% { transform: scale(1) rotate(0deg); }
+        }
+        .character {
+            transition: all 0.3s ease;
+        }
+        .confetti {
+            position: fixed;
+            animation: fall 3s linear forwards;
+        }
+        @keyframes fall {
+            to {
+                transform: translateY(100vh);
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <header class="text-center mb-8">
+            <h1 class="text-5xl font-bold mb-2 neuborder inline-block px-6 py-2 bg-yellow-300">Focus Quest</h1>
+            <p class="text-xl mt-4">Your Adventure in Task Mastery! 🚀</p>
+        </header>
+
+        <div class="grid md:grid-cols-3 gap-8">
+            <!-- Stats Section -->
+            <div class="bg-pink-200 p-6 rounded-xl neuborder">
+                <h2 class="text-2xl font-bold mb-4">Stats</h2>
+                <div class="space-y-4">
+                    <div>
+                        <p class="font-bold">Focus Power:</p>
+                        <div class="w-full bg-white rounded-full h-4 mt-2 neuborder">
+                            <div id="focus-bar" class="bg-pink-500 rounded-full h-full" style="width: 60%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <p class="font-bold">Task Streak: <span id="streak" class="text-red-600">0</span> days</p>
+                    </div>
+                    <div>
+                        <p class="font-bold">Daily Quests Completed: <span id="daily-complete">0</span>/5</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Character Section -->
+            <div class="bg-blue-200 p-6 rounded-xl neuborder">
+                <div class="text-center">
+                    <div id="character" class="character text-8xl mb-4 transform hover:scale-110 transition">🦸‍♂️</div>
+                    <div class="mb-4">
+                        <h2 class="text-2xl font-bold">Level <span id="level">1</span></h2>
+                        <div class="w-full bg-white rounded-full h-4 mt-2 neuborder">
+                            <div id="xp-bar" class="bg-blue-500 rounded-full h-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="flex justify-center items-center gap-2 text-2xl">
+                        <i class="bi bi-star-fill text-yellow-400"></i>
+                        <span id="stars" class="font-bold">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Task Management Section -->
+            <div class="bg-green-200 p-6 rounded-xl neuborder">
+                <form id="task-form" class="mb-4">
+                    <div class="flex gap-2">
+                        <input type="text" id="task-input" placeholder="New Quest..." 
+                            class="flex-1 p-3 neuborder rounded-lg bg-white">
+                        <button type="submit" class="bg-green-400 px-4 py-2 rounded-lg neuborder hover:bg-green-500 transition">
+                            Add
+                        </button>
+                    </div>
+                    <div class="mt-2 flex gap-2">
+                        <select id="task-priority" class="p-2 neuborder rounded-lg bg-white">
+                            <option value="low">Easy Quest</option>
+                            <option value="medium">Medium Quest</option>
+                            <option value="high">Epic Quest</option>
+                        </select>
+                        <input type="number" id="task-timer" placeholder="Minutes" class="w-24 p-2 neuborder rounded-lg bg-white">
+                    </div>
+                </form>
+                <div id="task-list" class="space-y-3 max-h-[300px] overflow-y-auto"></div>
+            </div>
+        </div>
+
+        <!-- Rewards Shop -->
+        <div class="mt-8 bg-purple-200 p-6 rounded-xl neuborder">
+            <h2 class="text-2xl font-bold mb-4">Magic Shop</h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <button onclick="buyCharacter('🦸‍♂️')" class="p-4 bg-white rounded-lg neuborder hover:bg-purple-100 transition">
+                    🦸‍♂️ Hero (10 ⭐)
+                </button>
+                <button onclick="buyCharacter('🧙')" class="p-4 bg-white rounded-lg neuborder hover:bg-purple-100 transition">
+                    🧙 Wizard (20 ⭐)
+                </button>
+                <button onclick="buyCharacter('🦊')" class="p-4 bg-white rounded-lg neuborder hover:bg-purple-100 transition">
+                    🦊 Fox (30 ⭐)
+                </button>
+                <button onclick="buyCharacter('🐉')" class="p-4 bg-white rounded-lg neuborder hover:bg-purple-100 transition">
+                    🐉 Dragon (50 ⭐)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let tasks = [];
+        let stars = 0;
+        let level = 1;
+        let xp = 0;
+        let streak = 0;
+        let dailyComplete = 0;
+        const xpNeeded = 100;
+
+        document.getElementById('task-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const input = document.getElementById('task-input');
+            const priority = document.getElementById('task-priority').value;
+            const timer = document.getElementById('task-timer').value;
+            
+            if (input.value.trim()) {
+                addTask(input.value, priority, timer);
+                input.value = '';
+                document.getElementById('task-timer').value = '';
+            }
+        });
+
+        function addTask(text, priority, timer) {
+            const task = {
+                id: Date.now(),
+                text,
+                priority,
+                timer: timer ? parseInt(timer) : null,
+                completed: false,
+                timeLeft: timer ? parseInt(timer) * 60 : null
+            };
+            tasks.push(task);
+            renderTasks();
+        }
+
+        function renderTasks() {
+            const taskList = document.getElementById('task-list');
+            taskList.innerHTML = '';
+            tasks.forEach(task => {
+                const taskElement = document.createElement('div');
+                const priorityColors = {
+                    low: 'bg-green-100',
+                    medium: 'bg-yellow-100',
+                    high: 'bg-red-100'
+                };
+                taskElement.className = `${priorityColors[task.priority]} p-4 rounded-lg neuborder ${task.completed ? 'opacity-50' : ''}`;
+                taskElement.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox" ${task.completed ? 'checked' : ''} 
+                            onchange="toggleTask(${task.id})" 
+                            class="w-5 h-5">
+                        <span class="${task.completed ? 'line-through' : ''}">${task.text}</span>
+                        ${task.timer ? `<span class="ml-auto" id="timer-${task.id}">${formatTime(task.timeLeft)}</span>` : ''}
+                        <button onclick="deleteTask(${task.id})" class="text-red-500 hover:text-red-700">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                `;
+                taskList.appendChild(taskElement);
+
+                if (task.timer && !task.completed) {
+                    startTimer(task.id);
+                }
+            });
+        }
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function startTimer(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (!task || task.completed) return;
+
+            const interval = setInterval(() => {
+                if (task.timeLeft > 0) {
+                    task.timeLeft--;
+                    const timerElement = document.getElementById(`timer-${taskId}`);
+                    if (timerElement) {
+                        timerElement.textContent = formatTime(task.timeLeft);
+                    }
+                } else {
+                    clearInterval(interval);
+                    task.completed = true;
+                    addReward();
+                    renderTasks();
+                }
+            }, 1000);
+        }
+
+        function createConfetti() {
+            const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff'];
+            for (let i = 0; i < 50; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = Math.random() * 100 + 'vw';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.width = '10px';
+                confetti.style.height = '10px';
+                document.body.appendChild(confetti);
+                setTimeout(() => confetti.remove(), 3000);
+            }
+        }
+
+        function toggleTask(id) {
+            const task = tasks.find(t => t.id === id);
+            if (task && !task.completed) {
+                task.completed = true;
+                dailyComplete++;
+                document.getElementById('daily-complete').textContent = dailyComplete;
+                addReward();
+                createConfetti();
+                renderTasks();
+            }
+        }
+
+        function deleteTask(id) {
+            tasks = tasks.filter(t => t.id !== id);
+            renderTasks();
+        }
+
+        function addReward() {
+            const baseReward = 2;
+            stars += baseReward;
+            xp += 25;
+            
+            if (xp >= xpNeeded) {
+                level++;
+                xp = xp - xpNeeded;
+                playLevelUpAnimation();
+            }
+            
+            updateStats();
+        }
+
+        function updateStats() {
+            document.getElementById('stars').textContent = stars;
+            document.getElementById('level').textContent = level;
+            document.getElementById('xp-bar').style.width = `${(xp/xpNeeded) * 100}%`;
+            document.getElementById('streak').textContent = streak;
+        }
+
+        function buyCharacter(character) {
+            const costs = {'🦸‍♂️': 10, '🧙': 20, '🦊': 30, '🐉': 50};
+            const cost = costs[character];
+            
+            if (stars >= cost) {
+                stars -= cost;
+                document.getElementById('character').textContent = character;
+                updateStats();
+                createConfetti();
+            } else {
+                alert('Not enough stars! Complete more quests to earn stars.');
+            }
+        }
+
+        function playLevelUpAnimation() {
+            const character = document.getElementById('character');
+            character.style.transform = 'scale(1.3) rotate(360deg)';
+            setTimeout(() => {
+                character.style.transform = 'scale(1) rotate(0deg)';
+            }, 500);
+            createConfetti();
+        }
+
+        // Add some initial tasks
+        addTask('Read a chapter of your favorite book', 'low', 15);
+        addTask('Complete math homework', 'medium', 20);
+        addTask('Clean your room', 'high', 30);
+    </script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
